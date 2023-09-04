@@ -1,8 +1,10 @@
-﻿using AwesomeDevEvents.API.Entities;
+﻿using AutoMapper;
+using AwesomeDevEvents.API.Entities;
 using AwesomeDevEvents.API.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AwesomeDevEvents.API.Models;
 
 namespace AwesomeDevEvents.API.Controllers
 {
@@ -11,10 +13,15 @@ namespace AwesomeDevEvents.API.Controllers
     public class DevEventsController : ControllerBase
     {
         private readonly DevEventsDbContext _context;
+        private readonly IMapper _mapper;
 
-        public DevEventsController(DevEventsDbContext context)
+        public DevEventsController(
+            DevEventsDbContext context,
+            IMapper mapper
+        )
         {
             _context = context;
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -28,7 +35,9 @@ namespace AwesomeDevEvents.API.Controllers
         {
             var devEvents = _context.DevEvents.Where(devEvent => !devEvent.IsDeleted).ToList();
 
-            return Ok(devEvents);
+            var viewModel = _mapper.Map<List<DevEventViewModel>>(devEvents);
+
+            return Ok(viewModel);
         }
 
         /// <summary>
@@ -52,7 +61,9 @@ namespace AwesomeDevEvents.API.Controllers
                 return NotFound();
             }
 
-            return Ok(devEvent);
+            var viewModel = _mapper.Map<DevEventViewModel>(devEvent);
+
+            return Ok(viewModel);
         }
 
         /// <summary>
@@ -61,13 +72,15 @@ namespace AwesomeDevEvents.API.Controllers
         /// <remarks>
         ///     { "title": "string", "description": "string", "startDate": "2023-09-04T17:07:06.953Z", "endDate": "2023-09-04T17:07:06.953Z" }
         /// </remarks>
-        /// <param name="devEvent">Dados do evento</param>
+        /// <param name="devEventInput">Dados do evento</param>
         /// <returns>Objeto recém-criado</returns>
         /// <response code="201">Sucesso</response>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
-        public IActionResult Post([FromBody] DevEvent devEvent)
+        public IActionResult Post([FromBody] DevEventInputModel devEventInput)
         {
+            var devEvent = _mapper.Map<DevEvent>(devEventInput);
+
             _context.DevEvents.Add(devEvent);
             _context.SaveChanges();
 
@@ -88,7 +101,7 @@ namespace AwesomeDevEvents.API.Controllers
         [HttpPut("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult Update(Guid id, [FromBody] DevEvent devEventInput)
+        public IActionResult Update(Guid id, [FromBody] DevEventInputModel devEventInput)
         {
             var devEvent = _context.DevEvents.SingleOrDefault(devEvent => devEvent.Id == id);
 
@@ -143,15 +156,17 @@ namespace AwesomeDevEvents.API.Controllers
         /// { "name": "string", "talkTitle": "string", "talkDescription": "string", "linkedinProfile": "string", "devEventId": "3fa85f64-5717-4562-b3fc-2c963f66afa6" }
         /// </remarks>
         /// <param name="id">Identificador do evento</param>
-        /// <param name="devEventSpeaker">Dados do palestrante</param>
+        /// <param name="devEventSpeakerInput">Dados do palestrante</param>
         /// <returns></returns>
         /// <response code="204">Sucesso</response>
         /// <response code="404">Não encontrado</response>
         [HttpPost("{id}/speakers")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult PostSpeaker(Guid id, [FromBody] DevEventSpeaker devEventSpeaker)
+        public IActionResult PostSpeaker(Guid id, [FromBody] DevEventSpeakerInputModel devEventSpeakerInput)
         {
+            var devEventSpeaker = _mapper.Map<DevEventSpeaker>(devEventSpeakerInput);
+
             devEventSpeaker.DevEventId = id;
 
             var devEvent = _context.DevEvents.Any(devEvent => devEvent.Id == id);
